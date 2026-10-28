@@ -1,5 +1,11 @@
 # create-subur-app
 
+## 0.1.1
+
+### Patch Changes
+
+- f34a16d: Primera publicació des del CI (trusted publishing i procedència).
+
 ## 0.1.0
 
 ### Minor Changes
