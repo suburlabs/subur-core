@@ -49,27 +49,75 @@ test('el hero con la película activa cumple WCAG 2.2 AA', async ({ browser }) =
     viewport: { height: 900, width: 1440 },
   })
   const page = await context.newPage()
+
+  // M5: s'analitzen els dos estats del film, `loading` (amb el seu indicador
+  // al carril i `aria-busy`) i `playing`. El film de la demo és petit i
+  // local: sense retenir-lo, `loading` durava menys que l'interval de
+  // sondeig de l'assert (al CI, `null` → `playing` sense cap `loading` entre
+  // mig) o canviava a `playing` a mitja anàlisi, i axe mesurava l'etiqueta
+  // del carril a mig fos (`color-contrast`, ~1,1:1). Ara la petició del film
+  // (`film.mp4` o `film-m.mp4`, segons l'amplada) queda retinguda fins que
+  // la primera anàlisi acaba: `loading` és estable mentre dura, i només es
+  // deixa passar després.
+  let filmRequested = false
+  let releaseFilm: () => void = () => {}
+  const filmHeld = new Promise<void>((resolve) => {
+    releaseFilm = resolve
+  })
+  await page.route('**/site/hero/film*.mp4', async (route) => {
+    filmRequested = true
+    await filmHeld
+    await route.continue()
+  })
+
+  // Repòs: cap transició CSS finita en curs dins l'escenari (el fos de
+  // l'etiqueta, el filet del carril, l'entrada del film). axe mesura colors
+  // a l'instant i un element a mig fos dona contrastos que no existeixen.
+  const transitionsSettled = () =>
+    page.waitForFunction(() => {
+      const stage = document.querySelector('[data-hero-stage]')
+      if (!stage) return false
+      return stage
+        .getAnimations({ subtree: true })
+        .every((animation) => animation.playState !== 'running' || animation.effect?.getComputedTiming().endTime === Infinity)
+    })
+  const describe = (violations: { id: string; nodes: { target: unknown[] }[] }[]) =>
+    violations.map((violation) => `${violation.id}: ${violation.nodes.map((node) => node.target.join(' ')).join(' | ')}`)
+
   await page.goto('/ca')
   const stage = page.locator('[data-hero-stage]')
+  const loader = page.locator('.hero-rail__loader')
 
-  // M5: sense esperar cap estat, axe podia trobar-se `loading` o `playing`
-  // a l'atzar segons quant trigués la descàrrega del film. `loading` porta
-  // el propi indicador i `aria-busy`, així que també es comprova aquí.
-  await expect(stage).toHaveAttribute('data-hero-state', 'loading', { timeout: 5_000 })
+  // La ruta ha d'haver atrapat la baixada: si el film canviés de nom, el
+  // test tornaria a dependre del temps sense avisar. Marge ampli: la
+  // baixada només arrenca després de `load`, d'un moment ociós i del LCP
+  // (o del seu temporitzador de seguretat de 2,5 s).
+  await expect
+    .poll(() => filmRequested, { message: 'la petició del film no ha passat per la ruta retinguda', timeout: 15_000 })
+    .toBe(true)
+  await expect(stage).toHaveAttribute('data-hero-state', 'loading')
+  await expect(loader).toBeVisible()
+  await expect.poll(() => loader.evaluate((el) => getComputedStyle(el).opacity)).toBe('1')
+  await transitionsSettled()
   const loading = await new AxeBuilder({ page }).include('[data-block="scrollHero"]').withTags(tags).analyze()
-  expect(loading.violations.map((violation) => violation.id)).toEqual([])
+  // L'anàlisi s'ha fet de cap a cap en `loading` (el vigilant de 20 s no ha saltat).
+  await expect(stage).toHaveAttribute('data-hero-state', 'loading')
+  expect(describe(loading.violations)).toEqual([])
 
+  releaseFilm()
   await expect(stage).toHaveAttribute('data-hero-state', 'playing', { timeout: 30_000 })
   // En entrar a `playing`, l'etiqueta de càrrega del carril se'n va amb un
   // fos de 300ms: analitzada a mig fos, axe la veia com text gairebé
   // transparent sobre el carril (contrast 1,04:1) i ho comptava com a
-  // violació. S'espera que el fos acabi (`visibility: hidden` en repòs).
-  await expect(page.locator('.hero-rail__loader')).toBeHidden()
+  // violació. S'espera que el fos acabi (`visibility: hidden` en repòs) i
+  // que l'escenari quedi en repòs.
+  await expect(loader).toBeHidden()
+  await transitionsSettled()
   const { violations } = await new AxeBuilder({ page })
     .include('[data-block="scrollHero"]')
     .withTags(tags)
     .analyze()
-  expect(violations.map((violation) => violation.id)).toEqual([])
+  expect(describe(violations)).toEqual([])
   await context.close()
 })
 
