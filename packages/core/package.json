@@ -1,6 +1,6 @@
 {
   "name": "@suburlabs/core",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "El nucli de les webs de Subur",
   "license": "MIT",
   "type": "module",
