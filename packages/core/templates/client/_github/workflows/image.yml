@@ -1,0 +1,25 @@
+name: image
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# Dues fusions seguides no han de promoure `latest` en ordre invertit: les execucions d'una mateixa ref van en fila.
+concurrency:
+  group: image-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+# El workflow reutilitzable del nucli, fixat a la versió exacta instal·lada: Renovate mou aquesta etiqueta i
+# @suburlabs/core a la mateixa PR, i `subur check` exigeix que coincideixin. Variables del repositori: SITE_URL (obligatòria)
+# i UMAMI_WEBSITE_ID + UMAMI_SCRIPT_URL (totes dues o cap).
+jobs:
+  image:
+    uses: suburlabs/subur-core/.github/workflows/client-image.yml@v{{coreVersion}}
+    permissions:
+      contents: read
+      packages: write
+    with:
+      site_url: ${{ vars.SITE_URL }}
+      umami_website_id: ${{ vars.UMAMI_WEBSITE_ID }}
+      umami_script_url: ${{ vars.UMAMI_SCRIPT_URL }}

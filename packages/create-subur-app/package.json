@@ -1,0 +1,38 @@
+{
+  "name": "create-subur-app",
+  "version": "0.0.0",
+  "description": "Crea el repositori d'un client de Subur sobre @suburlabs/core",
+  "license": "MIT",
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/suburlabs/subur-core.git",
+    "directory": "packages/create-subur-app"
+  },
+  "engines": {
+    "node": ">=24"
+  },
+  "bin": {
+    "create-subur-app": "./bin/create-subur-app.js"
+  },
+  "files": [
+    "bin",
+    "dist",
+    "scaffold",
+    "LICENSE",
+    "README.md"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test:int": "pnpm build && vitest run --config ./vitest.config.mts"
+  },
+  "devDependencies": {
+    "@types/node": "22.19.9",
+    "typescript": "5.7.3",
+    "vitest": "4.0.18"
+  }
+}

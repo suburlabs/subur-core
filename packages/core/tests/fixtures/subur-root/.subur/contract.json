@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "slug": "fixture",
+  "name": "Client de prova",
+  "status": "actiu",
+  "current": {
+    "plan": "business",
+    "revision": "2026-09-29.1",
+    "effectiveFrom": "2026-10-15"
+  },
+  "history": [
+    {
+      "effectiveFrom": "2026-10-15",
+      "type": "alta",
+      "plan": "business",
+      "addons": [
+        {
+          "id": "internacional",
+          "quantity": 2
+        }
+      ],
+      "revision": "2026-09-29.1",
+      "agreement": "prova"
+    }
+  ]
+}

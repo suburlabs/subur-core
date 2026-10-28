@@ -1,0 +1,42 @@
+{
+  "schema": 1,
+  "included": [
+    {
+      "id": "blog",
+      "origin": "plan",
+      "agreement": "prova"
+    },
+    {
+      "id": "advanced-seo",
+      "origin": "plan",
+      "agreement": "prova"
+    },
+    {
+      "id": "ai-visibility",
+      "origin": "plan",
+      "agreement": "prova"
+    },
+    {
+      "id": "priority-support",
+      "origin": "plan",
+      "agreement": "prova"
+    },
+    {
+      "id": "internacional",
+      "origin": "addon",
+      "agreement": "prova"
+    }
+  ],
+  "excluded": [
+    "reserves",
+    "area-privada",
+    "hores-editorials",
+    "mida"
+  ],
+  "limits": {
+    "pages": 8,
+    "languages": 3,
+    "additionalLanguages": 2,
+    "editorialHoursPerMonth": 2
+  }
+}

@@ -1,0 +1,42 @@
+# Base de dades: el Postgres de docker-compose.dev.yml (createdb no cal: el compose la crea)
+DATABASE_URL=postgres://subur:subur@127.0.0.1:5432/subur_{{slug}}
+
+# Xifrat dels tokens del CMS. Aquest valor només serveix en local; fora, openssl rand -hex 32
+SUBUR_SECRET=local-only
+
+# URL pública, sense barra final
+NEXT_PUBLIC_SERVER_URL=http://localhost:3000
+
+# Autenticació de tasques programades
+CRON_SECRET=
+
+# Validació de previsualitzacions
+PREVIEW_SECRET=local-only
+
+# Superadministrador de Subur. Es crea en arrencar si no n'hi ha cap.
+SUBUR_ADMIN_EMAIL=admin@{{domain}}
+# openssl rand -base64 24
+SUBUR_ADMIN_PASSWORD=local-only-password
+
+# Correu sortint (Resend). Sense clau, els missatges es desen al CMS i no s'envien.
+RESEND_API_KEY=
+# Adreça remitent d'un domini verificat a Resend, p. ex. web@{{domain}}
+EMAIL_FROM_ADDRESS=
+# Nom visible del remitent
+EMAIL_FROM_NAME=
+
+# Fitxers pujats. En desenvolupament, sense MEDIA_STORAGE, van al disc
+# (public/media). Per provar un bucket compatible amb S3: MEDIA_STORAGE=s3 i
+# les quatre variables (R2 amb jurisdicció UE:
+# S3_ENDPOINT=https://<compte>.eu.r2.cloudflarestorage.com; MinIO o AWS, el seu).
+# En producció MEDIA_STORAGE és obligatòria (s3 o local): /api/health respon 503 sense ella.
+# MEDIA_STORAGE=local
+# S3_BUCKET=
+# S3_ACCESS_KEY_ID=
+# S3_SECRET_ACCESS_KEY=
+# S3_ENDPOINT=
+# S3_REGION=auto
+
+# Analítica (Umami). Totes dues o cap. En desenvolupament, cap.
+# NEXT_PUBLIC_UMAMI_WEBSITE_ID=
+# NEXT_PUBLIC_UMAMI_SCRIPT_URL=https://analytics.subur.dev/script.js

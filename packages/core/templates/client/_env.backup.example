@@ -1,0 +1,11 @@
+# Còpia: cp .env.backup.example .env.backup (mai es versiona)
+# Només el llegeix el servei `backup`. Va separat de .env.docker perquè el token
+# de les còpies pot esborrar-les: si entrés al contenidor web, una fuita
+# d'entorn allà comprometria també les còpies.
+
+# Bucket <client>-backups (a Subur, R2 amb jurisdicció UE) i un token DIFERENT del de web,
+# amb lectura/escriptura sobre <client>-backups I <client>-uploads (la còpia
+# llegeix els fitxers pujats i la restauració amb --media els reescriu).
+BACKUP_S3_BUCKET=
+BACKUP_S3_ACCESS_KEY_ID=
+BACKUP_S3_SECRET_ACCESS_KEY=

@@ -1,0 +1,189 @@
+name: check
+
+# El CI del nucli: el paquet, la CLI, la demo i les guardes del repositori públic (`check`); l'e2e de la demo en producció
+# (`e2e`); i l'acceptació, que crea una app amb la CLI des del seu tarball i en prova la imatge real (`acceptance`).
+on:
+  push:
+    branches: [main]
+  pull_request:
+    # ready_for_review: sense aquest tipus, treure una PR d'esborrany no dispara cap execució i e2e/acceptance queden «skipped»
+    types: [opened, synchronize, reopened, ready_for_review]
+
+concurrency:
+  # Per estat d'esborrany: el run d'esborrany (només `check`) i el de `ready_for_review` (amb e2e i acceptació) van a grups
+  # diferents i no es cancel·len entre si; dins de cada estat, un push nou cancel·la l'anterior. En `push` no hi ha PR:
+  # el grup és `check-<ref>-ready`.
+  group: check-${{ github.ref }}-${{ github.event.pull_request.draft && 'draft' || 'ready' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  SUBUR_SECRET: ci-only-secret
+  PREVIEW_SECRET: ci-only
+  CRON_SECRET: ci-only
+  NEXT_PUBLIC_SERVER_URL: http://127.0.0.1:3000
+  SUBUR_ADMIN_EMAIL: ci@subur.dev
+  SUBUR_ADMIN_PASSWORD: ci-only-password
+  DATABASE_URL: postgres://subur:subur@127.0.0.1:5432/subur
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    # La prova de la CLI des del tarball (create.int.spec, dins de `pnpm test:int`) triga entre 3 i 15 minuts
+    timeout-minutes: 40
+    permissions: { contents: read }
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env: { POSTGRES_USER: subur, POSTGRES_PASSWORD: subur, POSTGRES_DB: subur }
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U subur" --health-interval 5s --health-timeout 3s --health-retries 10
+    steps:
+      # La història sencera i les etiquetes: les guardes d'historial i de plantilles les llegeixen (un clon superficial hi falla)
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - uses: pnpm/action-setup@v4
+        with: { version: 10.33.0 }
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      # Els fitxers propietat del nucli de la demo els escriu `subur sync` (no es versionen): dues passades donen la mateixa
+      # empremta (determinisme, mapa d'imports del motor inclòs). Abans de tsc i lint, que els necessiten.
+      - name: subur sync determinista
+        run: |
+          gen() { find examples/demo/src/app examples/demo/src/proxy.ts examples/demo/src/site/seed/run.ts -type f | sort | xargs shasum -a 256; }
+          pnpm -C examples/demo exec subur sync && gen > "$RUNNER_TEMP/sync1"
+          pnpm -C examples/demo exec subur sync && gen > "$RUNNER_TEMP/sync2"
+          diff "$RUNNER_TEMP/sync1" "$RUNNER_TEMP/sync2"
+      # La demo té la forma d'un client: les comprovacions de `subur check` que li toquen com a membre del workspace.
+      - run: pnpm -C examples/demo exec subur check
+      # Després del build: les proves i la demo s'importen el paquet des de dist.
+      - run: pnpm typecheck && pnpm lint
+      # El paquet (build + vitest), la CLI i la demo, un rere l'altre.
+      - run: pnpm test:int
+        env:
+          # La demo no té .env al CI (és ignorat): el seu globalSetup pren aquesta i en deriva subur_test_<pid>. És la
+          # mateixa de l'env del workflow; s'escriu aquí perquè el pas en depèn.
+          DATABASE_URL: postgres://subur:subur@127.0.0.1:5432/subur
+      # La guarda de dades de client (el workspace i el contingut d'`npm pack --dry-run`, que llegeix dist/) i les proves
+      # dels scripts del CI i de les guardes.
+      - run: pnpm guards:test && pnpm test:scripts && pnpm guards
+      # La guarda de l'historial (autors, committers, missatges i diffs de tots els commits) i la de la interfície del client
+      # (un canvi a les plantilles només amb el salt de versió que toca). Cadascuna ha d'imprimir la seva línia de verd: un
+      # punt d'entrada que no corre no val.
+      - name: Guarda de l'historial
+        run: |
+          set -eo pipefail
+          pnpm guards:history | tee "$RUNNER_TEMP/history.log"
+          grep -q 'historial: net' "$RUNNER_TEMP/history.log"
+      - name: Guarda de la interfície del client
+        run: |
+          set -eo pipefail
+          pnpm guards:templates | tee "$RUNNER_TEMP/templates.log"
+          grep -q '^plantilles: ' "$RUNNER_TEMP/templates.log"
+
+  # Els jobs pesants només corren en PR no esborrany i a `main`. Cap necessita `ffmpeg`: els mitjans de la demo són versionats.
+  e2e:
+    needs: check
+    if: github.event_name == 'push' || github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions: { contents: read }
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env: { POSTGRES_USER: subur, POSTGRES_PASSWORD: subur, POSTGRES_DB: subur }
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U subur" --health-interval 5s --health-timeout 3s --health-retries 10
+    env:
+      # El servidor de la demo escolta al 3200 (playwright.config.ts i .env.example); el 3000 de l'env del workflow és el del paquet.
+      NEXT_PUBLIC_SERVER_URL: http://localhost:3200
+      # En producció /api/health exigeix MEDIA_STORAGE; els mitjans del seed són al disc (public/media de la demo).
+      MEDIA_STORAGE: local
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: 10.33.0 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 24, cache: pnpm, cache-dependency-path: pnpm-lock.yaml }
+      - run: pnpm install --frozen-lockfile && pnpm build
+      # El build de producció de la demo contra el qual corre l'e2e (en dev, la hidratació al runner arriba tard per a les
+      # proves amb terminis curts). NEXT_PUBLIC_SUBUR_E2E_HOOKS=1 compila els ganxos `__HERO_*` de les proves del film
+      # (Film.client.tsx); un build sense la variable, com el de la imatge, no els porta. El `postbuild` (next-sitemap)
+      # escriu public/robots.txt i els sitemaps que comprova l'e2e.
+      - run: NEXT_PUBLIC_SUBUR_E2E_HOOKS=1 pnpm -C examples/demo build
+      # Una sola variant de @payloadcms/ui al bundle del servidor (dues = el panell amb contextos duplicats; 0 = el bundle
+      # ja no porta camins i cal revisar la prova).
+      - run: test "$(grep -rhoE '@payloadcms\+ui@[0-9][A-Za-z0-9.+@_-]*' examples/demo/.next/server | sort -u | wc -l | tr -d ' ')" = 1
+      - run: pnpm -C examples/demo exec playwright install --with-deps chromium
+      # La base del servei (`subur`): el seed l'accepta perquè CI=true (scripts/assert-demo-db.mjs).
+      - run: pnpm -C examples/demo exec subur migrate && pnpm -C examples/demo seed
+      # `next start` sobre aquell build, al 3200 del `webServer` de playwright.config.ts: Playwright el reutilitza
+      # (`reuseExistingServer`); en local, la mateixa configuració aixeca `pnpm dev`. S'escalfa cada ruta que visita l'e2e
+      # (barat: la primera petició omple la cau de cada ruta). La sortida, a un fitxer: el procés de fons no reté la del pas.
+      - name: La demo en producció, escalfada
+        run: |
+          base=http://localhost:3200
+          nohup pnpm -C examples/demo exec next start -p 3200 > "$RUNNER_TEMP/demo-server.log" 2>&1 &
+          for _ in $(seq 1 60); do curl -fsS -o /dev/null --max-time 300 "$base/api/health" && break; sleep 3; done
+          curl -fsS -o /dev/null --max-time 300 "$base/api/health"
+          for locale in ca es en; do
+            for route in "" /serveis /contacte /avis-legal /privacitat /cookies; do
+              curl -fsS -o /dev/null --max-time 300 "$base/$locale$route"
+            done
+          done
+          for route in /admin/login /robots.txt /sitemap.xml /pages-sitemap.xml; do
+            curl -fsS -o /dev/null --max-time 300 "$base$route"
+          done
+          # La ruta del 404 respon 404, sense -f
+          test "$(curl -sS -o /dev/null -w '%{http_code}' --max-time 300 "$base/ca/no-existe")" = 404
+      - run: pnpm -C examples/demo test:e2e --reporter=list,html
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: demo-playwright-report
+          path: examples/demo/playwright-report
+          retention-days: 7
+      - if: failure()
+        run: tail -n 200 "$RUNNER_TEMP/demo-server.log"
+
+  acceptance:
+    needs: check
+    if: github.event_name == 'push' || github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    permissions: { contents: read }
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env: { POSTGRES_USER: subur, POSTGRES_PASSWORD: subur, POSTGRES_DB: subur }
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U subur" --health-interval 5s --health-timeout 3s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: 10.33.0 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 24, cache: pnpm, cache-dependency-path: pnpm-lock.yaml }
+      - run: pnpm install --frozen-lockfile
+      # App creada amb la CLI des del seu tarball fora del repositori ($RUNNER_TEMP), amb el nucli del seu tarball a vendor/,
+      # imatge real, panell amb sessió i porta. La porta i el seed accepten la base `subur` del servei perquè CI=true.
+      - run: pnpm acceptance --docker-net host --app "$RUNNER_TEMP/acceptance-app"
+      # Si falla o es talla (el temps del job o una cancel·lació: `!success()`, no només `failure()`), l'app tal com l'ha
+      # deixada l'script (package.json, lock, Dockerfile, vendor/), sense node_modules ni .next.
+      - if: ${{ !success() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: acceptance-app
+          path: |
+            ${{ runner.temp }}/acceptance-app
+            !${{ runner.temp }}/acceptance-app/node_modules
+            !${{ runner.temp }}/acceptance-app/.next
+          include-hidden-files: true
+          retention-days: 7

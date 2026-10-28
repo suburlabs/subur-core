@@ -1,0 +1,6 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": { "module": "esnext", "moduleResolution": "bundler", "noEmit": true, "types": ["node"] },
+  "include": ["src/**/*.ts", "src/**/*.tsx", "tests/**/*.ts", "scripts/**/*.ts"],
+  "exclude": ["**/.tmp-app-*/"]
+}

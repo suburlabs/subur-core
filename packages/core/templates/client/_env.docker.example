@@ -1,0 +1,74 @@
+# Còpia: cp .env.docker.example .env.docker (mai es versiona)
+# Nom diferent de .env.production a propòsit: Next el carregaria automàticament
+# en un `pnpm build` local (NODE_ENV=production durant el build) i barrejaria
+# aquests secrets amb l'entorn de desenvolupament.
+
+# Domini públic que servirà Caddy (sense https://). En local: localhost
+SITE_DOMAIN=localhost
+# URL pública, sense barra final. S'incrusta al build: si canvia, cal recompilar.
+NEXT_PUBLIC_SERVER_URL=https://localhost
+
+# openssl rand -hex 32 (cadascun diferent)
+SUBUR_SECRET=
+CRON_SECRET=
+PREVIEW_SECRET=
+
+# Obligatori: sense superadministrador i sense aquestes variables, web es queda
+# unhealthy (ho comprova /api/health a cada mesura) i Caddy, que és a la
+# plataforma i no espera ningú, respon 502 mentre duri.
+# L'alta d'usuaris per HTTP està tancada: no hi ha cap manera de crear el primer
+# superadministrador des del navegador.
+SUBUR_ADMIN_EMAIL=
+# openssl rand -base64 24
+SUBUR_ADMIN_PASSWORD=
+
+# Correu (Resend). Sense clau, els missatges es desen al CMS i no s'envien.
+RESEND_API_KEY=
+EMAIL_FROM_ADDRESS=
+EMAIL_FROM_NAME=
+
+# Base de dades del client al Postgres de la plataforma: la imprimeix l'operador
+# amb `ops alta`
+DATABASE_URL=
+
+# Etiqueta de la imatge a GHCR (latest, sha-xxxxxxx o vX.Y.Z)
+IMAGE_TAG=latest
+
+# Fitxers pujats. MEDIA_STORAGE és OBLIGATÒRIA en producció:
+#   s3    → bucket compatible amb S3 amb les quatre variables de sota
+#           (Subur: bucket <client>-uploads a R2, jurisdicció UE, versionat
+#           activat, token d'API amb lectura/escriptura només sobre aquest
+#           bucket; S3_ENDPOINT=https://<compte>.eu.r2.cloudflarestorage.com,
+#           l'únic subdomini que respon amb un bucket de la UE)
+#   local → disc del contenidor (MEDIA_DIR, per defecte public/media),
+#           només amb un volum muntat: mai a la plataforma de Subur.
+# Sense ella, /api/health respon 503 i diu el motiu al registre.
+MEDIA_STORAGE=s3
+S3_BUCKET=
+S3_ACCESS_KEY_ID=
+S3_SECRET_ACCESS_KEY=
+S3_ENDPOINT=
+# Regió, opcional: `auto` per defecte (R2); AWS vol la seva (eu-central-1…).
+# S3_REGION=auto
+# Proveïdor per a rclone (només el servei backup): Cloudflare per defecte;
+# Minio, AWS o Other per a la resta.
+# S3_PROVIDER=Cloudflare
+
+# Analítica (Umami): el website del client al panell d'Umami. Es couen
+# al build de la imatge (variables UMAMI_WEBSITE_ID i UMAMI_SCRIPT_URL del
+# repositori): l'script que rep el navegador ve del build, no d'aquí. Aquí
+# `web` i `seed` només les llegeixen en arrencar per comprovar que hi són
+# totes dues o cap: amb només una, no arrenquen (el mateix control que S3_*).
+# Valor a fer servir per a l'script:
+# https://analytics.subur.dev/script.js
+NEXT_PUBLIC_UMAMI_WEBSITE_ID=
+NEXT_PUBLIC_UMAMI_SCRIPT_URL=
+
+# Còpies: el bucket i el token de les còpies NO són aquí, sinó a .env.backup
+# (vegeu .env.backup.example). Aquest fitxer el llegeixen web i seed; el token de
+# les còpies pot esborrar-les i no ha d'entrar mai al contenidor web.
+# Horari i retenció: els decideix el pla (subscription.plan) dins del contenidor
+# de còpies, cada dia a les 03:00: cap variable aquí. Starter: mensual,
+# 3 còpies; Business: diària, 30.
+# Buit fins al Worker de monitorització
+BACKUP_HEARTBEAT_URL=

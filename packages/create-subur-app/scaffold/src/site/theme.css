@@ -1,0 +1,74 @@
+/* Tema de la demo: neutre, sense cap color de cap client ni de la marca de Subur. */
+:root {
+  --background: #f4f3ef;
+  --foreground: #16201b;
+  --card: #ffffff;
+  --card-foreground: #16201b;
+  --popover: #ffffff;
+  --popover-foreground: #16201b;
+  --primary: #1f5a3d;
+  --primary-foreground: #f4f3ef;
+  --secondary: #e3e7e1;
+  --secondary-foreground: #16201b;
+  --muted: #e3e7e1;
+  --muted-foreground: #2c4a3a;
+  --accent: #e3e7e1;
+  --accent-foreground: #2c4a3a;
+  --destructive: #b3261e;
+  --destructive-foreground: #ffffff;
+  --border: #1f5a3d;
+  --input: #1f5a3d;
+  --ring: #16201b;
+  --radius: 0.25rem;
+  --brand-strong: #17452f;
+  --brand-open: #3f8f68;
+  --surface-shade: #e3e7e1;
+  --shutter: #1f5a3d;
+  --shutter-strong: #17452f;
+  --shutter-foreground: #f4f3ef;
+  --tile: #ffffff;
+  --tile-foreground: #1f5a3d;
+  --tile-muted-foreground: #17452f;
+  --tile-shade: #e3e7e1;
+  --grain: 0.086 0.125 0.106;
+  --grain-opacity: 0.04;
+  --font-display-stack: var(--font-display-face), Georgia, serif;
+  --font-text-stack: var(--font-text-face), ui-sans-serif, system-ui, sans-serif;
+  --header-h: 4.5rem;
+}
+
+.dark {
+  --background: #121a16;
+  --foreground: #eef1ec;
+  --card: #1a251f;
+  --card-foreground: #eef1ec;
+  --popover: #1a251f;
+  --popover-foreground: #eef1ec;
+  --primary: #8fcfaa;
+  --primary-foreground: #121a16;
+  --secondary: #24332b;
+  --secondary-foreground: #eef1ec;
+  --muted: #24332b;
+  --muted-foreground: #b5cbbd;
+  --accent: #24332b;
+  --accent-foreground: #eef1ec;
+  --destructive: #f2a19a;
+  --destructive-foreground: #121a16;
+  --border: #6fae8b;
+  --input: #6fae8b;
+  --ring: #eef1ec;
+  --brand-strong: #b5e0c6;
+  --surface-shade: #24332b;
+  --shutter: #17452f;
+  --shutter-strong: #0f3020;
+  --shutter-foreground: #e3ece6;
+  --tile: #e9ece7;
+  --grain: 0.933 0.945 0.925;
+  --grain-opacity: 0.04;
+}
+
+@media (width >= 64rem) {
+  :root {
+    --header-h: 5.5rem;
+  }
+}

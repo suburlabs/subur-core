@@ -1,0 +1,48 @@
+# Privat: mai dins de la imatge
+.env
+.env.*
+*.env
+**/.env*
+*.db
+*.db-*
+**/*.db*
+.DS_Store
+!.env.example
+# El contracte el genera subur-business per a les ordres d'operació; mai dins de la imatge
+.subur/
+
+# Local o generat
+node_modules
+.next
+.git
+.github
+docs
+playwright-report
+test-results
+coverage
+tsconfig.tsbuildinfo
+public/media
+tests
+scripts
+
+# Propietat del nucli: els escriu `subur sync` dins del build; una còpia local vella no entra a la imatge
+src/app/(frontend)/(sitemaps)/pages-sitemap.xml/route.ts
+src/app/(frontend)/\[locale\]/\[slug\]/page.tsx
+src/app/(frontend)/\[locale\]/layout.tsx
+src/app/(frontend)/\[locale\]/not-found.tsx
+src/app/(frontend)/\[locale\]/page.tsx
+src/app/(frontend)/api/c15t/\[...path\]/route.ts
+src/app/(frontend)/api/subur-assets/\[...path\]/route.ts
+src/app/(frontend)/globals.css
+src/app/(frontend)/llms.txt/route.ts
+src/app/(frontend)/next/exit-preview/route.ts
+src/app/(frontend)/next/preview/route.ts
+src/app/(subur)/admin/\[\[...segments\]\]/not-found.tsx
+src/app/(subur)/admin/\[\[...segments\]\]/page.tsx
+src/app/(subur)/admin/importMap.js
+src/app/(subur)/api/\[...slug\]/route.ts
+src/app/(subur)/api/graphql-playground/route.ts
+src/app/(subur)/api/graphql/route.ts
+src/app/(subur)/layout.tsx
+src/proxy.ts
+src/site/seed/run.ts

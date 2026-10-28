@@ -1,0 +1,93 @@
+name: backup-image
+
+# La imatge de còpies de seguretat dels clients (`ghcr.io/suburlabs/subur-backup`), construïda des de les fonts de
+# packages/core/backup (mai una còpia per digest d'una imatge d'un altre registre). Qualsevol canvi a packages/core/backup/** puja
+# packages/core/backup/VERSION: una versió publicada no es reescriu i la guarda «La versió no existeix encara» ho exigeix.
+# Després de publicar, el job `tag` etiqueta backup-v<VERSION> sobre el commit (idempotent: es pot tornar a córrer sol).
+# Camí manual: `gh workflow run backup.yml --ref main`.
+on:
+  push: { branches: [main], paths: ['packages/core/backup/**', '.github/workflows/backup.yml'] }
+  pull_request: { paths: ['packages/core/backup/**', '.github/workflows/backup.yml'] }
+  workflow_dispatch:
+# Les publicacions des de main van en una sola cua; les PR i els dispatch fora de main, cadascun el seu grup (un push nou substitueix l'execució anterior).
+concurrency:
+  group: backup-image-${{ (github.event_name == 'pull_request' || github.ref != 'refs/heads/main') && github.ref || 'publish' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' || github.ref != 'refs/heads/main' }}
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions: { contents: read, packages: write }
+    steps:
+      - uses: actions/checkout@v4
+      - if: github.event_name == 'workflow_dispatch' && github.ref != 'refs/heads/main'
+        run: echo "Només es publica des de main"; exit 1
+      - id: version
+        run: echo "version=$(tr -d '[:space:]' < packages/core/backup/VERSION)" >> "$GITHUB_OUTPUT"
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        if: github.event_name != 'pull_request'
+        with: { registry: ghcr.io, username: '${{ github.actor }}', password: '${{ secrets.GITHUB_TOKEN }}' }
+      # Una versió publicada no es reescriu: si l'etiqueta ja existeix, el workflow falla i cal pujar VERSION.
+      # Corre també a les PR (sense login, amb una versió que no pot existir): així la classificació de la resposta del registre es prova abans de main.
+      # `run:` d'Actions és `bash -e`: una assignació `out=$(…)` que falla mataria el pas just quan la versió no existeix; d'aquí l'`if`.
+      - name: La versió no existeix encara
+        env:
+          IMAGE: ghcr.io/${{ github.repository_owner }}/subur-backup
+          VERSION: ${{ github.event_name == 'pull_request' && format('0.0.0-probe-{0}', github.sha) || steps.version.outputs.version }}
+        run: |
+          set -u
+          ref="${IMAGE,,}:${VERSION}"
+          if out=$(docker buildx imagetools inspect "$ref" 2>&1); then echo "La versió ${VERSION} ja existeix a ${IMAGE,,}: puja packages/core/backup/VERSION"; exit 1; fi
+          # Sense login (PR) el registre respon denied/unauthorized/«403 Forbidden» a tot el que no existeix; amb login (push) aquests dos són un error d'autenticació, i una versió que SÍ que existeix no es pot tornar a publicar per culpa d'un error transitori.
+          if [ "${GITHUB_EVENT_NAME}" = pull_request ]; then missing='not found|manifest unknown|MANIFEST_UNKNOWN|NAME_UNKNOWN|name unknown|denied|unauthorized|forbidden'; else missing='not found|manifest unknown|MANIFEST_UNKNOWN|NAME_UNKNOWN|name unknown'; fi
+          if printf '%s' "$out" | grep -Eqi "$missing"; then echo "La versió ${VERSION} no existeix: es publica"; exit 0; fi
+          echo "No s'ha pogut consultar el registre:"; printf '%s\n' "$out"; exit 1
+      - id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/subur-backup
+          tags: |
+            type=raw,value=${{ steps.version.outputs.version }}
+            type=raw,value=latest,enable=${{ github.event_name != 'pull_request' }}
+          # Sense títol propi, metadata-action titularia la imatge amb el nom del repositori.
+          labels: |
+            org.opencontainers.image.version=${{ steps.version.outputs.version }}
+            org.opencontainers.image.title=subur-backup
+      - id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: packages/core/backup
+          platforms: linux/amd64
+          push: ${{ github.event_name != 'pull_request' }}
+          load: ${{ github.event_name == 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: VERSION=${{ steps.version.outputs.version }}
+          # Només llegeix la cau de main: les PR no hi escriuen (quota).
+          cache-from: type=gha,scope=backup
+          cache-to: ${{ github.event_name != 'pull_request' && 'type=gha,mode=max,scope=backup' || '' }}
+      - if: github.event_name != 'pull_request'
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          DIGEST: ${{ steps.build.outputs.digest }}
+        run: echo "subur-backup ${VERSION} → ${DIGEST}"
+
+  # backup-v<VERSION> sobre el commit publicat: en `push` a main i en `workflow_dispatch` des de main. Idempotent (si
+  # l'etiqueta ja és a l'origen, no fa res): si només falla aquest job, es torna a córrer sol.
+  tag:
+    needs: build
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions: { contents: write }
+    steps:
+      - uses: actions/checkout@v4
+      - name: Etiqueta backup-v<VERSION> (idempotent)
+        run: |
+          set -eu
+          v="$(tr -d '[:space:]' < packages/core/backup/VERSION)"
+          if [ -n "$(git ls-remote --tags origin "refs/tags/backup-v${v}")" ]; then echo "backup-v${v} ja existeix"; exit 0; fi
+          git tag "backup-v${v}" "${GITHUB_SHA}"
+          git push origin "refs/tags/backup-v${v}"
+          echo "etiquetat backup-v${v} a ${GITHUB_SHA}"

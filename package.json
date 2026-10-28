@@ -1,0 +1,35 @@
+{
+  "name": "subur-core-workspace",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.33.0",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "build": "pnpm -r --filter @suburlabs/core --filter create-subur-app build",
+    "typecheck": "pnpm -r typecheck && pnpm typecheck:scripts",
+    "typecheck:scripts": "tsc -p tsconfig.scripts.json",
+    "lint": "eslint .",
+    "test:int": "pnpm -r --workspace-concurrency=1 test:int",
+    "guards": "tsx scripts/guards/clientData.ts",
+    "guards:history": "tsx scripts/guards/history.ts",
+    "guards:templates": "tsx scripts/guards/templatesMajor.ts",
+    "guards:test": "vitest run scripts/guards",
+    "test:scripts": "vitest run scripts/ci",
+    "acceptance": "tsx scripts/ci/acceptance.ts",
+    "migrate:create": "tsx scripts/migrate-create.ts",
+    "knip": "knip",
+    "changeset": "changeset",
+    "release": "pnpm build && changeset publish"
+  },
+  "devDependencies": {
+    "@changesets/cli": "3.0.3",
+    "eslint": "9.39.5",
+    "eslint-config-next": "16.3.3",
+    "knip": "6.42.1",
+    "tsx": "4.22.4",
+    "typescript": "5.7.3",
+    "vitest": "4.0.18"
+  }
+}

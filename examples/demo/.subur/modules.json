@@ -1,0 +1,42 @@
+{
+  "schema": 1,
+  "included": [
+    {
+      "id": "blog",
+      "origin": "plan",
+      "agreement": "mostra"
+    },
+    {
+      "id": "advanced-seo",
+      "origin": "plan",
+      "agreement": "mostra"
+    },
+    {
+      "id": "ai-visibility",
+      "origin": "plan",
+      "agreement": "mostra"
+    },
+    {
+      "id": "priority-support",
+      "origin": "plan",
+      "agreement": "mostra"
+    },
+    {
+      "id": "internacional",
+      "origin": "addon",
+      "agreement": "mostra"
+    }
+  ],
+  "excluded": [
+    "reserves",
+    "area-privada",
+    "hores-editorials",
+    "mida"
+  ],
+  "limits": {
+    "pages": 8,
+    "languages": 3,
+    "additionalLanguages": 2,
+    "editorialHoursPerMonth": 2
+  }
+}

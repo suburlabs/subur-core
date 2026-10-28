@@ -1,0 +1,12 @@
+{
+  "schema": 1,
+  "revision": "2026-09-29.1",
+  "backup": {
+    "frequency": "daily",
+    "copies": 30
+  },
+  "responseBusinessDays": 2,
+  "handoffDays": 10,
+  "retentionDays": 30,
+  "seoReport": "quarterly"
+}

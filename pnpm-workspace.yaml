@@ -1,0 +1,17 @@
+packages:
+  - packages/*
+  - examples/*
+allowBuilds:
+  esbuild: true
+  sharp: true
+  unrs-resolver: true
+# La demo rep el paquet injectat (`dependenciesMeta.injected` al seu package.json): una còpia sota node_modules/.pnpm que
+# resol el motor (dependències exactes del nucli) amb les mateixes variants de peers que la demo, que el declara a les
+# mateixes versions exactes (pla E2, R3): `next` i els `@payloadcms/*` es resolen en un sol context. Amb l'enllaç simple
+# (bug d'E1), el paquet en resolia una altra variant i el build portava dues còpies del motor del panell (contextos de
+# React duplicats: «useUploadHandlers must be used within UploadHandlersProvider» a tot el panell amb sessió).
+# Just després d'instal·lar, la còpia només té els `files` publicats; després de cada `build` del paquet corregut per
+# pnpm, pnpm hi reflecteix tot el directori del paquet (llevat de node_modules). La fidelitat als `files` la prova
+# l'acceptació amb el tarball (Task 20).
+syncInjectedDepsAfterScripts:
+  - build

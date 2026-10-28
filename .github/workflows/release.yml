@@ -1,0 +1,70 @@
+name: release
+
+# changesets: en push a main amb changesets pendents, changesets/action obre o actualitza la PR
+# «chore: version packages» (cal el permís «Allow GitHub Actions to create and approve pull requests»; les seves execucions
+# de check.yml queden pendents d'aprovació). En fusionar-la, publica @suburlabs/core i create-subur-app a npmjs (trusted
+# publishing: OIDC amb id-token, cap token; npm ≥ 11.5.1; procedència per NPM_CONFIG_PROVENANCE) i etiqueta v<x.y.z>, que
+# és el que els clients fixen al `uses:` del seu image.yml. Si l'acció ha publicat, s'etiqueta; si no (una versió publicada a mà,
+# o cap canvi de versió al commit), només s'etiqueta quan el commit canvia la versió i aquesta és a npm; mai en silenci.
+on:
+  push:
+    branches: [main]
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  pull-requests: write
+  id-token: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - uses: pnpm/action-setup@v4
+        with: { version: 10.33.0 }
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          registry-url: https://registry.npmjs.org
+      - run: pnpm install --frozen-lockfile
+      - name: npm ≥ 11.5.1 (trusted publishing)
+        run: node -e "const [a,b,c]=require('child_process').execSync('npm --version').toString().trim().split('.').map(Number); process.exit(a>11||(a===11&&(b>5||(b===5&&c>=1)))?0:1)"
+      - id: changesets
+        uses: changesets/action@v2.1.2
+        with:
+          version-script: pnpm changeset version
+          publish-script: pnpm release
+          commit-message: 'chore: version packages'
+          pr-title: 'chore: version packages'
+        env:
+          NPM_CONFIG_PROVENANCE: 'true'
+      # Només en mode «publish» (cap changeset pendent): en mode «version» l'acció deixa la versió nova a l'arbre de treball sense
+      # commit, i l'etiqueta aniria al commit equivocat. La versió es llegeix del commit que s'etiqueta, mai del disc.
+      - name: Etiqueta v<versió> (idempotent)
+        if: steps.changesets.outputs.has-changesets == 'false'
+        env:
+          PUBLISHED: ${{ steps.changesets.outputs.published }}
+        run: |
+          set -eu
+          ver() { git show "$1:packages/core/package.json" | node -p "JSON.parse(require('fs').readFileSync(0,'utf8')).version"; }
+          v="$(ver "${GITHUB_SHA}")"
+          prev="$(ver "${GITHUB_SHA}^1" 2>/dev/null)" || prev=none
+          if [ -n "$(git ls-remote --tags origin "refs/tags/v${v}")" ]; then echo "v${v} ja existeix"; exit 0; fi
+          # El comptador `i` del bucle de sis intents no es fa servir
+          # shellcheck disable=SC2034
+          if [ "${PUBLISHED}" != true ]; then
+            [ "${prev}" != "${v}" ] || { echo "cap canvi de versió a ${GITHUB_SHA}: res a etiquetar"; exit 0; }
+            [ "${v}" != 0.0.0 ] || { echo "0.0.0: res a etiquetar"; exit 0; }
+            ok=0; for i in 1 2 3 4 5 6; do npm view "@suburlabs/core@${v}" version >/dev/null 2>&1 && { ok=1; break; }; sleep 20; done
+            [ "${ok}" = 1 ] || { echo "::error::${GITHUB_SHA} declara la ${v}, que no és a npm: cap etiqueta"; exit 1; }
+          fi
+          git tag "v${v}" "${GITHUB_SHA}"
+          git push origin "refs/tags/v${v}"
+          echo "etiquetat v${v} a ${GITHUB_SHA}"

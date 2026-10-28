@@ -1,0 +1,12 @@
+{
+  "compilerOptions": {
+    "strict": true,
+    "target": "ES2022",
+    "lib": ["DOM", "DOM.Iterable", "ES2022"],
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "react-jsx"
+  }
+}

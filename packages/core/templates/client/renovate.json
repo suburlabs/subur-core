@@ -1,0 +1,32 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended"],
+  "enabledManagers": ["npm", "github-actions"],
+  "rangeStrategy": "pin",
+  "packageRules": [
+    {
+      "description": "El nucli i el seu workflow reutilitzable es mouen junts, a la mateixa versió; les etiquetes backup-v* i les rc no hi entren",
+      "groupName": "subur-core",
+      "matchPackageNames": ["@suburlabs/core", "suburlabs/subur-core"],
+      "allowedVersions": "/^v?\\d+\\.\\d+\\.\\d+$/",
+      "prPriority": 10
+    },
+    {
+      "description": "Next, React, el motor, Tailwind, eslint-config-next i graphql els fixa el nucli: el client no els declara",
+      "matchPackageNames": ["next", "react", "react-dom", "payload", "tailwindcss", "eslint-config-next", "graphql", "@payloadcms/**", "@tailwindcss/**"],
+      "enabled": false
+    },
+    {
+      "description": "pnpm i Node els fixa la plantilla del nucli (subur check els compara)",
+      "matchDepTypes": ["packageManager", "engines"],
+      "enabled": false
+    },
+    {
+      "description": "Les versions majors de la resta de dependències del client les mou el nucli amb la plantilla (subur update); el nucli mateix sí que pot pujar de major",
+      "matchDepTypes": ["dependencies", "devDependencies"],
+      "matchUpdateTypes": ["major"],
+      "matchPackageNames": ["!@suburlabs/core"],
+      "enabled": false
+    }
+  ]
+}

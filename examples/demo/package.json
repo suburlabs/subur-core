@@ -1,0 +1,76 @@
+{
+  "name": "subur-demo",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.33.0",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "predev": "subur sync",
+    "dev": "cross-env NODE_OPTIONS=--no-deprecation next dev --port 3200",
+    "prebuild": "subur sync",
+    "build": "cross-env NODE_OPTIONS=--no-deprecation next build",
+    "postbuild": "next-sitemap --config next-sitemap.config.cjs",
+    "start": "cross-env NODE_OPTIONS=--no-deprecation next start",
+    "preseed": "node scripts/assert-demo-db.mjs && subur sync",
+    "seed": "cross-env NODE_OPTIONS=--no-deprecation payload run src/site/seed/run.ts",
+    "prehero-photos": "node scripts/assert-demo-db.mjs",
+    "hero-photos": "cross-env NODE_OPTIONS=--no-deprecation payload run scripts/hero-photos.ts",
+    "migrate": "subur migrate",
+    "check": "subur check",
+    "gate": "subur gate",
+    "make:media": "tsx scripts/make-media.ts",
+    "capture:blocks": "tsx scripts/capture-block-previews.ts",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "test:int": "cross-env NODE_OPTIONS=--no-deprecation vitest run --config ./vitest.config.mts",
+    "test:e2e": "cross-env NODE_OPTIONS=\"--no-deprecation --import=tsx/esm\" playwright test --config=playwright.config.ts"
+  },
+  "dependencies": {
+    "@payloadcms/admin-bar": "3.89.0",
+    "@payloadcms/db-postgres": "3.89.0",
+    "@payloadcms/email-resend": "3.89.0",
+    "@payloadcms/live-preview-react": "3.89.0",
+    "@payloadcms/next": "3.89.0",
+    "@payloadcms/plugin-form-builder": "3.89.0",
+    "@payloadcms/plugin-redirects": "3.89.0",
+    "@payloadcms/plugin-seo": "3.89.0",
+    "@payloadcms/richtext-lexical": "3.89.0",
+    "@payloadcms/storage-s3": "3.89.0",
+    "@payloadcms/translations": "3.89.0",
+    "@payloadcms/ui": "3.89.0",
+    "@suburlabs/core": "workspace:*",
+    "cross-env": "7.0.3",
+    "next": "16.3.3",
+    "next-sitemap": "4.2.3",
+    "payload": "3.89.0",
+    "react": "19.2.6",
+    "react-dom": "19.2.6",
+    "sharp": "0.35.4",
+    "tailwindcss": "4.3.3"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "4.13.0",
+    "@playwright/test": "1.58.2",
+    "@types/node": "22.19.9",
+    "@types/pg": "8.23.1",
+    "@types/react": "19.2.14",
+    "@types/react-dom": "19.2.3",
+    "@vitejs/plugin-react": "4.5.2",
+    "dotenv": "16.4.7",
+    "eslint": "9.39.5",
+    "eslint-config-next": "16.3.3",
+    "jsdom": "28.0.0",
+    "pg": "8.20.0",
+    "tsx": "4.22.4",
+    "typescript": "5.7.3",
+    "vite-tsconfig-paths": "6.0.5",
+    "vitest": "4.0.18"
+  },
+  "dependenciesMeta": {
+    "@suburlabs/core": {
+      "injected": true
+    }
+  }
+}

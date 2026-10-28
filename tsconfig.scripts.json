@@ -1,0 +1,15 @@
+// Els scripts del workspace (acceptació, guardes, migrate:create) i la configuració de vitest, que cap paquet no comprova.
+// Els tipus de Node, els del paquet: al job `check` aquest pas corre abans de la instal·lació de l'arrel (E12), i tsc no
+// ha de trobar res fora de core/. Sense JSX (`preserve`): amb el `react-jsx` de la base, tsc importaria react/jsx-runtime.
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "noEmit": true,
+    "jsx": "preserve",
+    "types": ["node"],
+    "typeRoots": ["./packages/core/node_modules/@types"]
+  },
+  "include": ["scripts/**/*.ts", "vitest.config.mts"]
+}

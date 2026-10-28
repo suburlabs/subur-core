@@ -1,0 +1,50 @@
+@import '@payloadcms/ui/scss';
+
+.dashboard .before-dashboard {
+  margin-bottom: base(1.5);
+
+  &__banner {
+    & h4 {
+      margin: 0;
+    }
+  }
+
+  &__instructions {
+    list-style: none;
+    margin-bottom: base(0.5);
+    padding: 0;
+
+    & li {
+      width: 100%;
+      margin-bottom: base(0.5);
+    }
+  }
+
+  &__locales {
+    margin-bottom: base(1);
+
+    & h4 {
+      margin: 0 0 base(0.5);
+    }
+
+    & ul {
+      list-style: none;
+      margin: 0 0 base(0.5);
+      padding: 0;
+    }
+
+    // `opacity: 0.55` no bastava en el tema clar (contrast mesurat de
+    // 3.34:1, per sota del 4.5:1 exigit per WCAG un cop mesclat amb el
+    // fons). `--theme-elevation-400` (el gris de `FieldDescription` i dels
+    // camps de només lectura) tampoc: 2.81:1 en clar. `--theme-elevation-600`
+    // (el gris que ja fa servir el panell als toasts) sí que ho compleix en
+    // els dos temes — mesurat abans de triar-lo.
+    & li[data-active='false'] {
+      color: var(--theme-elevation-600);
+    }
+  }
+
+  & a:hover {
+    opacity: 0.85;
+  }
+}

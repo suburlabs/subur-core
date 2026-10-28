@@ -1,0 +1,20 @@
+node_modules/
+dist/
+.build/
+.next/
+next-env.d.ts
+*.tsbuildinfo
+.DS_Store
+.env
+.env.*
+!.env.example
+**/public/media/
+**/.gate-media/
+# Fitxers d'agent que `next dev` torna a generar a cada arrencada
+examples/demo/AGENTS.md
+examples/demo/CLAUDE.md
+test-results/
+playwright-report/
+*.log
+*.pid
+**/.tmp-app-*/

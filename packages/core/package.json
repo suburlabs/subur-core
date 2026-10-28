@@ -1,0 +1,155 @@
+{
+  "name": "@suburlabs/core",
+  "version": "0.0.0",
+  "description": "El nucli de les webs de Subur",
+  "license": "MIT",
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/suburlabs/subur-core.git",
+    "directory": "packages/core"
+  },
+  "engines": {
+    "node": ">=24"
+  },
+  "bin": {
+    "subur": "./bin/subur.js"
+  },
+  "files": [
+    "bin",
+    "dist",
+    "backup",
+    "templates",
+    "LICENSE",
+    "README.md"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "sideEffects": [
+    "**/*.css",
+    "**/*.scss"
+  ],
+  "exports": {
+    "./package.json": "./package.json",
+    "./site": {
+      "types": "./dist/site/index.d.ts",
+      "default": "./dist/site/index.js"
+    },
+    "./ui": {
+      "types": "./dist/ui/index.d.ts",
+      "default": "./dist/ui/index.js"
+    },
+    "./contract": {
+      "types": "./dist/contract/index.d.ts",
+      "default": "./dist/contract/index.js"
+    },
+    "./config": {
+      "types": "./dist/config/index.d.ts",
+      "default": "./dist/config/index.js"
+    },
+    "./types": {
+      "types": "./dist/types/index.d.ts"
+    },
+    "./migrations": {
+      "types": "./dist/migrations-index/index.d.ts",
+      "default": "./dist/migrations-index/index.js"
+    },
+    "./app": {
+      "types": "./dist/app/index.d.ts",
+      "default": "./dist/app/index.js"
+    },
+    "./app/admin": {
+      "types": "./dist/app-admin/index.d.ts",
+      "default": "./dist/app-admin/index.js"
+    },
+    "./proxy": {
+      "types": "./dist/proxy/index.d.ts",
+      "default": "./dist/proxy/index.js"
+    },
+    "./admin": {
+      "types": "./dist/admin/index.d.ts",
+      "default": "./dist/admin/index.js"
+    },
+    "./next": {
+      "types": "./dist/next/index.d.ts",
+      "default": "./dist/next/index.js"
+    },
+    "./seed": {
+      "types": "./dist/seed/exports.d.ts",
+      "default": "./dist/seed/exports.js"
+    },
+    "./css": "./dist/css/core.css",
+    "./css/primitives.css": "./dist/css/primitives.css",
+    "./cache-handler": {
+      "types": "./dist/cache/handler.d.ts",
+      "default": "./dist/cache/handler.js"
+    },
+    "./gate": {
+      "types": "./dist/gate/index.d.ts",
+      "default": "./dist/gate/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsx scripts/build.ts",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test:int": "pnpm build && vitest run --config ./vitest.config.mts",
+    "generate:types": "pnpm build && PAYLOAD_CONFIG_PATH=tests/fixtures/app/src/payload.config.ts PAYLOAD_TS_OUTPUT_PATH=src/types/subur-types.ts payload generate:types"
+  },
+  "dependencies": {
+    "@c15t/backend": "2.2.1",
+    "@c15t/nextjs": "2.2.1",
+    "@c15t/scripts": "2.2.0",
+    "@gsap/react": "2.1.2",
+    "@payloadcms/admin-bar": "3.89.0",
+    "@payloadcms/db-postgres": "3.89.0",
+    "@payloadcms/email-resend": "3.89.0",
+    "@payloadcms/live-preview-react": "3.89.0",
+    "@payloadcms/next": "3.89.0",
+    "@payloadcms/plugin-form-builder": "3.89.0",
+    "@payloadcms/plugin-redirects": "3.89.0",
+    "@payloadcms/plugin-seo": "3.89.0",
+    "@payloadcms/richtext-lexical": "3.89.0",
+    "@payloadcms/storage-s3": "3.89.0",
+    "@payloadcms/translations": "3.89.0",
+    "@payloadcms/ui": "3.89.0",
+    "@tailwindcss/postcss": "4.3.3",
+    "@tailwindcss/typography": "0.5.20",
+    "c15t": "2.2.1",
+    "class-variance-authority": "0.7.1",
+    "clsx": "2.1.1",
+    "embla-carousel-react": "8.6.0",
+    "eslint-config-next": "16.3.3",
+    "graphql": "16.14.2",
+    "gsap": "3.15.0",
+    "kysely": "0.28.17",
+    "lucide-react": "0.563.0",
+    "next": "16.3.3",
+    "next-sitemap": "4.2.3",
+    "next-themes": "0.4.6",
+    "payload": "3.89.0",
+    "pg": "8.20.0",
+    "radix-ui": "1.6.7",
+    "react": "19.2.6",
+    "react-dom": "19.2.6",
+    "react-hook-form": "7.71.1",
+    "schema-dts": "2.0.0",
+    "sharp": "0.35.4",
+    "simple-icons": "16.32.0",
+    "tailwind-merge": "3.7.0",
+    "tailwindcss": "4.3.3",
+    "tsx": "4.22.4",
+    "tw-animate-css": "1.4.0"
+  },
+  "devDependencies": {
+    "@testing-library/react": "16.3.0",
+    "@types/node": "22.19.9",
+    "@types/pg": "8.23.1",
+    "@types/react": "19.2.14",
+    "@types/react-dom": "19.2.3",
+    "@vitejs/plugin-react": "4.5.2",
+    "jsdom": "28.0.0",
+    "typescript": "5.7.3",
+    "vitest": "4.0.18"
+  }
+}
