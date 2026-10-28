@@ -13,6 +13,8 @@ const CLI = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 const scratch = mkdtempSync(path.join(os.tmpdir(), 'create-subur-app-args-'))
 afterAll(() => rmSync(scratch, { force: true, recursive: true }))
 
+// L'adreça `noreply` de l'usuari 1 (prova) del `gh` de mentida (la guarda de dades la deixa passar: clientData.ts, GITHUB_NOREPLY).
+const NOREPLY = '1+prova@users.noreply.github.com'
 const BASE = ['app', '--slug', 'prova', '--domain', 'prova.example', '--locale', 'ca', '--name', 'Reformes Prova']
 /** BASE amb `--opció valor` canviat (o afegit); `null` la treu. */
 const withOpt = (key: string, value: string | null, args = BASE) => {
@@ -34,6 +36,12 @@ const fails = (args: string[], message: RegExp) => {
   expect((error as CliError).message).toMatch(message)
 }
 const bin = (args: string[], env: NodeJS.ProcessEnv = process.env) => spawnSync(process.execPath, [path.join(CLI, 'bin/create-subur-app.js'), ...args], { cwd: scratch, encoding: 'utf8', env })
+/** L'entorn sense cap identitat de git: ni configuració global ni de sistema, ni -c per l'entorn, ni variables GIT_AUTHOR_… o GIT_COMMITTER_…. */
+const noIdentity = (extra: NodeJS.ProcessEnv = {}) => ({
+  ...Object.fromEntries(Object.entries(process.env).filter(([k]) => !/^GIT_(AUTHOR|COMMITTER)_|^GIT_CONFIG/.test(k))), GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1', ...extra,
+})
+/** Una identitat explícita sobre l'entorn sense identitat: la creació sense --repo no depèn de la màquina (ni del runner, que no en té). */
+const withIdentity = (extra: NodeJS.ProcessEnv = {}) => noIdentity({ GIT_AUTHOR_EMAIL: 'ci@subur.dev', GIT_AUTHOR_NAME: 'prova', GIT_COMMITTER_EMAIL: 'ci@subur.dev', GIT_COMMITTER_NAME: 'prova', ...extra })
 /** Un executable de mentida a `dir`. */
 const fake = (dir: string, name: string, script: string) => { mkdirSync(dir, { recursive: true }); writeFileSync(path.join(dir, name), `#!/bin/sh\n${script}\n`); chmodSync(path.join(dir, name), 0o755) }
 
@@ -170,7 +178,7 @@ describe('el binari: fallades amb el directori a mitges, preflight de gh i updat
     mkdirSync(path.dirname(tgz), { recursive: true })
     writeFileSync(tgz, 'no és un tarball')
     const dir = path.join(scratch, 'a-mitges')
-    const r = bin([dir, ...BASE.slice(1), '--core-tarball', tgz, '--no-build'])
+    const r = bin([dir, ...BASE.slice(1), '--core-tarball', tgz, '--no-build'], withIdentity())
     expect(r.status, r.stderr).toBe(1)
     expect(r.stderr).toContain(`pista: ${dir} ha quedat a mitges; esborra ${dir} i torna-ho a provar`)
     expect(r.stderr).not.toMatch(/^\s+at /m)
@@ -186,6 +194,47 @@ describe('el binari: fallades amb el directori a mitges, preflight de gh i updat
     expect(r.stderr).toMatch(/^gh no té cap sessió activa \(gh auth login\)/m)
     expect(r.stderr).not.toMatch(/pista:/)
     expect(existsSync(dir)).toBe(false)
+  })
+
+  // Un tarball trencat perquè una regressió (la comprovació que no salta) falli de seguida en lloc d'instal·lar res.
+  const broken = () => {
+    const tgz = path.join(scratch, 'trencat-identitat', 'suburlabs-core-9.9.9.tgz')
+    mkdirSync(path.dirname(tgz), { recursive: true })
+    writeFileSync(tgz, 'no és un tarball')
+    return tgz
+  }
+  it('sense --repo i sense identitat de git: codi 1, el motiu, i no s\'ha escrit res (abans de cap instal·lació)', () => {
+    const dir = path.join(scratch, 'sense-identitat')
+    const r = bin([dir, ...BASE.slice(1), '--core-tarball', broken(), '--no-build'], noIdentity())
+    expect(r.status, r.stderr).toBe(1)
+    expect(r.stderr).toMatch(/^git no té cap identitat configurada \(git config --global user\.name/m)
+    expect(r.stderr).toMatch(/includeIf per al directori nou, la comprovació no la veu: usa --repo o git config --global/)
+    expect(r.stderr).not.toMatch(/pista:/)
+    expect(r.stderr).not.toMatch(/^\s+at /m)
+    expect(existsSync(dir)).toBe(false)
+  })
+
+  it('--repo amb sessió de gh però sense poder-ne llegir la identitat (gh api user): codi 1, el motiu, i no s\'ha escrit res', () => {
+    const fakeBin = path.join(scratch, 'gh-sense-usuari')
+    fake(fakeBin, 'gh', '[ "$1" = "--version" ] && exit 0\n[ "$1 $2" = "auth status" ] && exit 0\nexit 1')
+    const dir = path.join(scratch, 'sense-usuari')
+    const r = bin([dir, ...BASE.slice(1), '--repo', 'suburlabs/prova', '--site-url', 'https://prova.example', '--core-tarball', broken(), '--no-build'], { ...process.env, PATH: `${fakeBin}:${process.env.PATH}` })
+    expect(r.status, r.stderr).toBe(1)
+    expect(r.stderr).toMatch(/^no s'ha pogut llegir la identitat de la sessió de gh \(gh api user\)/m)
+    expect(r.stderr).not.toMatch(/pista:/)
+    expect(existsSync(dir)).toBe(false)
+  })
+
+  it('--repo sense identitat de git: la de gh n\'hi ha prou (la comprovació de git només és sense --repo)', () => {
+    const fakeBin = path.join(scratch, 'gh-amb-usuari')
+    fake(fakeBin, 'gh', '[ "$1" = "--version" ] && exit 0\n[ "$1 $2" = "auth status" ] && exit 0\n[ "$1 $2 $3" = "api user --jq" ] && { echo \'{"id":1,"login":"prova","name":null}\'; exit 0; }\nexit 1')
+    const dir = path.join(scratch, 'gh-sense-git')
+    const r = bin([dir, ...BASE.slice(1), '--repo', 'suburlabs/prova', '--site-url', 'https://prova.example', '--core-tarball', broken(), '--no-build'], noIdentity({ PATH: `${fakeBin}:${process.env.PATH}` }))
+    // Passa la comprovació prèvia, escriu la identitat al clon (nom buit → el login) i cau després al tarball trencat: la pista local.
+    expect(r.status, r.stderr).toBe(1)
+    expect(r.stdout).toContain(`commit inicial amb prova <${NOREPLY}>\n`)
+    expect(r.stderr).toContain(`pista: ${dir} ha quedat a mitges`)
+    expect(spawnSync('git', ['config', '--local', 'user.email'], { cwd: dir, encoding: 'utf8', env: noIdentity() }).stdout.trim()).toBe(NOREPLY)
   })
 
   it('update --help: la línia d\'ús i codi 0 (no és cap directori)', () => {

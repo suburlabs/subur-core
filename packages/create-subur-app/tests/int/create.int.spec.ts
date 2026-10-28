@@ -16,15 +16,19 @@ const github = path.join(scratch, 'github')
 const remote = path.join(github, 'suburlabs/prova.git')
 const calls = path.join(scratch, 'calls.log')
 let tgz = ''
-// Git aïllat: cap identitat ni configuració de la màquina; cap pregunta de credencials; el remot de github.com va al bare local.
+// Git aïllat: cap configuració de la màquina; la identitat del CI per l'entorn (GIT_CONFIG_*: guanya a la del repositori, i
+// amb --repo la `noreply` de gh l'ha de vèncer igualment); cap pregunta de credencials; el remot de github.com va al bare local.
 const env = {
-  ...process.env, CI: 'true', GIT_CONFIG_GLOBAL: path.join(scratch, 'gitconfig-empty'), GIT_CONFIG_NOSYSTEM: '1', GIT_TERMINAL_PROMPT: '0',
-  GIT_CONFIG_COUNT: '1', GIT_CONFIG_KEY_0: `url.${github}/.insteadOf`, GIT_CONFIG_VALUE_0: 'https://github.com/',
+  ...Object.fromEntries(Object.entries(process.env).filter(([k]) => !/^GIT_(AUTHOR|COMMITTER)_/.test(k))), CI: 'true', GIT_CONFIG_GLOBAL: path.join(scratch, 'gitconfig-empty'), GIT_CONFIG_NOSYSTEM: '1', GIT_TERMINAL_PROMPT: '0',
+  GIT_CONFIG_COUNT: '3', GIT_CONFIG_KEY_0: `url.${github}/.insteadOf`, GIT_CONFIG_VALUE_0: 'https://github.com/',
+  GIT_CONFIG_KEY_1: 'user.name', GIT_CONFIG_VALUE_1: 'create-subur-app', GIT_CONFIG_KEY_2: 'user.email', GIT_CONFIG_VALUE_2: 'ci@subur.dev',
   npm_config_prefer_offline: 'true', // la memòria cau de pnpm primer: ≈3 min en calent, fins a 15 en fred (Step 9)
   PATH: `${bin}:${process.env.PATH}`,
 }
-const cli = (args: string[]) => spawnSync(process.execPath, [path.join(CLI, 'bin/create-subur-app.js'), ...args], { cwd: scratch, encoding: 'utf8', env })
+const cli = (args: string[], extra: NodeJS.ProcessEnv = {}) => spawnSync(process.execPath, [path.join(CLI, 'bin/create-subur-app.js'), ...args], { cwd: scratch, encoding: 'utf8', env: { ...env, ...extra } })
 const git = (cwd: string, args: string[]) => execFileSync('git', args, { cwd, encoding: 'utf8', env }).trim()
+// L'adreça `noreply` de l'usuari 1 (prova) del `gh` de mentida (la guarda de dades la deixa passar: clientData.ts, GITHUB_NOREPLY).
+const NOREPLY = '1+prova@users.noreply.github.com'
 const BASE = ['--slug', 'prova', '--domain', 'prova.example', '--locale', 'es', '--name', 'Reformes Prova', '--business', business, '--no-build']
 
 beforeAll(() => {
@@ -32,9 +36,9 @@ beforeAll(() => {
   execFileSync('pnpm', ['-C', path.join(CORE, '../..'), 'build'], { stdio: 'inherit' })
   execFileSync('pnpm', ['-C', CORE, 'pack', '--pack-destination', scratch], { stdio: 'inherit' })
   tgz = path.join(scratch, readdirSync(scratch).find((f) => /^suburlabs-core-.*\.tgz$/.test(f))!)
-  // `gh` de mentida: respon a `--version` i `auth status` (les comprovacions prèvies de create) sense registrar res, i registra cada altra crida;
-  // cap servei. El remot bare rep el push real (via insteadOf) i el seu hook registra l'ordre.
-  mkdirSync(bin); writeFileSync(path.join(bin, 'gh'), `#!/bin/sh\n[ "$1" = "--version" ] && exit 0\n[ "$1 $2" = "auth status" ] && exit 0\necho "gh $*" >> "${calls}"\n`, { mode: 0o755 })
+  // `gh` de mentida: respon a `--version`, `auth status` i `api user --jq …` (les comprovacions prèvies de create; l'usuari 1, prova, «Prova»)
+  // sense registrar res, i registra cada altra crida; cap servei. El remot bare rep el push real (via insteadOf) i el seu hook registra l'ordre.
+  mkdirSync(bin); writeFileSync(path.join(bin, 'gh'), `#!/bin/sh\n[ "$1" = "--version" ] && exit 0\n[ "$1 $2" = "auth status" ] && exit 0\n[ "$1 $2 $3" = "api user --jq" ] && { echo '{"id":1,"login":"prova","name":"Prova"}'; exit 0; }\necho "gh $*" >> "${calls}"\n`, { mode: 0o755 })
   mkdirSync(remote, { recursive: true })
   execFileSync('git', ['init', '-q', '--bare', remote], { env })
   writeFileSync(path.join(remote, 'hooks/post-receive'), `#!/bin/sh\necho "push" >> "${calls}"\n`, { mode: 0o755 })
@@ -75,6 +79,7 @@ describe('create-subur-app', () => {
     expect(r.stdout).toMatch(/projectat client project prova --repo/)
     expect(r.stdout).toMatch(/Queda a mà:[\s\S]*repositori a GitHub/)
     expect(git(app, ['log', '--format=%s|%ae|%ce'])).toBe(`feat: web de Reformes Prova, creada amb create-subur-app ${version}|ci@subur.dev|ci@subur.dev`)
+    expect(r.stdout).toContain('commit inicial amb create-subur-app <ci@subur.dev>\n')
     expect(git(app, ['status', '--porcelain'])).toBe('')
     expect(existsSync(calls)).toBe(false)
   })
@@ -91,7 +96,11 @@ describe('create-subur-app', () => {
   })
   it('amb --repo: gh repo create, SITE_URL i Umami abans del push, i el push arriba al remot (local; mai a github.com)', () => {
     const app2 = path.join(scratch, 'app2')
-    const r = cli([app2, ...BASE, '--core-tarball', tgz, '--repo', 'suburlabs/prova', '--site-url', 'https://prova.example', '--umami-website-id', 'w1', '--umami-script-url', 'https://analytics.example/script.js'])
+    const r = cli([app2, ...BASE, '--core-tarball', tgz, '--repo', 'suburlabs/prova', '--site-url', 'https://prova.example', '--umami-website-id', 'w1', '--umami-script-url', 'https://analytics.example/script.js'], {
+      // Identitats que no han de guanyar a la de gh: les variables de l'entorn de qui la crida i author.*/committer.* (que guanyen a user.*)
+      GIT_AUTHOR_EMAIL: 'intrus@example.com', GIT_AUTHOR_NAME: 'Intrus', GIT_COMMITTER_EMAIL: 'intrus@example.com', GIT_COMMITTER_NAME: 'Intrus',
+      GIT_CONFIG_COUNT: '5', GIT_CONFIG_KEY_3: 'author.email', GIT_CONFIG_VALUE_3: 'autor@example.com', GIT_CONFIG_KEY_4: 'committer.email', GIT_CONFIG_VALUE_4: 'committer@example.com',
+    })
     expect(r.status, r.stderr).toBe(0)
     expect(readFileSync(calls, 'utf8').trim().split('\n')).toEqual([
       'gh repo create suburlabs/prova --private',
@@ -101,6 +110,12 @@ describe('create-subur-app', () => {
       'push',
     ])
     expect(git(remote, ['log', '--format=%s', 'main'])).toMatch(/^feat: web de Reformes Prova/)
+    // La identitat de la sessió de gh, no la de git (ci@subur.dev de l'entorn del test) ni les intruses (variables i author.*/committer.*): GitHub rebutjaria un correu privat (GH007)
+    expect(git(remote, ['log', '--format=%an|%ae|%cn|%ce', 'main'])).toBe(`Prova|${NOREPLY}|Prova|${NOREPLY}`)
+    expect(git(app2, ['log', '--format=%ae|%ce'])).toBe(`${NOREPLY}|${NOREPLY}`)
+    expect(git(app2, ['config', '--local', 'user.email'])).toBe(NOREPLY)   // els commits següents del clon també
+    expect(git(app2, ['config', '--local', 'user.name'])).toBe('Prova')
+    expect(r.stdout).toContain(`commit inicial amb Prova <${NOREPLY}>\n`)
     expect(git(app2, ['config', '--get', 'remote.origin.url'])).toBe('https://github.com/suburlabs/prova.git')   // get-url aplicaria insteadOf
     expect(r.stdout).not.toMatch(/Queda a mà:[\s\S]*repositori a GitHub/)
   })

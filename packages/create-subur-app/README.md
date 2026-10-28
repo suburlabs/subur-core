@@ -19,7 +19,10 @@ Pas a pas, dins de `<dir>` (buit o inexistent):
    i els tres `.md` porten el nom, el domini, l'idioma i l'identificador; la resta es copia tal qual.
 4. Amb `--business <camí>`, escriu `.subur/` des de subur-business (`subur client project`).
 5. `subur sync`, `subur check` i, llevat de `--no-build`, `pnpm build`.
-6. El primer commit.
+6. El primer commit. Amb `--repo`, amb l'adreça `noreply` de GitHub de la sessió de `gh` (`<id>+<usuari>@users.noreply.github.com`,
+   desada també a la configuració del repositori nou); sense, amb la identitat que git té configurada (si no n'hi ha, o només
+   la dona un `includeIf` per al directori nou, que la comprovació no veu, s'atura abans d'escriure res: usa `--repo` o
+   `git config --global`).
 7. Amb `--repo suburlabs/<id> --site-url https://<domini>`: crea el repositori privat a GitHub, hi posa les variables
    `SITE_URL` (i, amb `--umami-website-id` i `--umami-script-url`, les d'Umami) abans del primer push, i hi fa el push.
 

@@ -25,6 +25,12 @@ const ALLOWED_EMAILS = /^(?:[^@\s]+@subur\.dev|[a-z0-9._+-]+@(?:[a-z0-9-]+\.)*(?
  */
 const PLACEHOLDER_EMAILS = /^hola@ej\x65mplo\.com$/i
 /**
+ * L'adreça `noreply` de GitHub (`<id>+<usuari>@users.noreply.github.com`): no és el correu de ningú, la mateixa forma que
+ * la guarda de l'historial accepta com a autor (history.ts). La fan servir la CLI (`create --repo`) i les seves proves.
+ * Exacta: sense l'id, o amb un altre domini que s'hi assembli, salta.
+ */
+const GITHUB_NOREPLY = /^\d+\+[A-Za-z0-9-]+@users\.noreply\.github\.com$/i
+/**
  * La línia de copyright de la LICENSE (ruling P32): l'adreça del titular del motor, i només aquesta. Una altra adreça
  * del mateix domini, o d'un domini que hi comenci (`…-client.es`), salta.
  */
@@ -43,7 +49,7 @@ export function scanForClientData(files: Array<{ path: string; text: string }>):
     return text.split('\n').flatMap((line, index) => [
       ...RULES.filter(([, re]) => re.test(line)).map(([rule]) => ({ line: index + 1, path: file, rule })),
       ...(localeApplies && LOCALE.test(line) ? [{ line: index + 1, path: file, rule: 'locale' }] : []),
-      ...[...line.matchAll(EMAIL)].filter((m) => ![ALLOWED_EMAILS, PLACEHOLDER_EMAILS, LICENSE_EMAILS].some((re) => re.test(m[0]))).map(() => ({ line: index + 1, path: file, rule: 'correu' })),
+      ...[...line.matchAll(EMAIL)].filter((m) => ![ALLOWED_EMAILS, GITHUB_NOREPLY, PLACEHOLDER_EMAILS, LICENSE_EMAILS].some((re) => re.test(m[0]))).map(() => ({ line: index + 1, path: file, rule: 'correu' })),
     ])
   })
 }
