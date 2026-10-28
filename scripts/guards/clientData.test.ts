@@ -27,6 +27,12 @@ describe('guarda «cap dada de client» (spec §11)', () => {
     expect(rules(j('adeu', '@ejemplo.com'))).toEqual(['correu'])
     expect(rules(j('mario', '@vil', 'ar.dev'))).toEqual(['correu'])
   })
+  it('correus: l\'adreça noreply de GitHub (<id>+<usuari>) passa; sense l\'id o amb un domini que s\'hi assembli, no', () => {
+    expect(rules('1+prova@users.noreply.github.com 12345+x-y@users.noreply.github.com')).toEqual([])
+    for (const near of [j('prova', '@users.noreply.github.com'), j('1+prova', '@users.noreply.github.com.es'), j('1+prova', '@noreply.github.com'), j('1+prova', '@users.noreply.github.co'), j('x+prova', '@users.noreply.github.com')]) {
+      expect(rules(near), near).toEqual(['correu'])
+    }
+  })
   it('marca: el catàleg, el logo de Subur, el seu dibuix ASCII i les tipografies', () => {
     expect(rules(`import x from '${j('@suburlabs/', 'catalog')}/brand'`)).toEqual(['marca'])
     expect(rules(`export function ${j('Subur', 'Logo')}() {}`)).toEqual(['marca'])

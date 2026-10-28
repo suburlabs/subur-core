@@ -1,6 +1,7 @@
 // core/packages/create-subur-app/src/create.ts — l'ordre de l'spec §4.1, pas a pas
 import { execFileSync, spawnSync } from 'node:child_process'
 import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
+import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -14,6 +15,28 @@ const walk = (dir: string, base = dir): string[] => readdirSync(dir).filter((e) 
 const run = (cmd: string, args: string[], cwd: string, env: NodeJS.ProcessEnv = process.env) => execFileSync(cmd, args, { cwd, env, stdio: 'inherit' })
 const write = (file: string, text: string) => { mkdirSync(path.dirname(file), { recursive: true }); writeFileSync(file, text) }
 const has = (cmd: string) => spawnSync(cmd, ['--version'], { stdio: 'ignore' }).status === 0
+// La identitat del commit sense --repo: la configurada, mai endevinada del nom de la màquina (`useConfigOnly`).
+const CONFIG_ONLY = ['-c', 'user.useConfigOnly=true']
+/** `Nom <correu>` de l'autor i del committer tal com els resoldrà el commit a `cwd`; null si git no en té cap de configurada. */
+function gitIdentity(cwd: string): null | string {
+  const [author, committer] = ['GIT_AUTHOR_IDENT', 'GIT_COMMITTER_IDENT'].map((v) => spawnSync('git', [...CONFIG_ONLY, 'var', v], { cwd, encoding: 'utf8' }))
+  if (author.status !== 0 || committer.status !== 0) return null
+  const [a, c] = [author, committer].map((r) => r.stdout.trim().replace(/ \d+ [+-]\d{4}$/, ''))
+  return a === c ? a : `${a} (committer ${c})`
+}
+/** La identitat de la sessió de `gh`: l'adreça `noreply` de GitHub (<id>+<login>@users.noreply.github.com), mai el correu del compte. */
+function ghIdentity(): null | { email: string; name: string } {
+  const r = spawnSync('gh', ['api', 'user', '--jq', '{id, login, name}'], { encoding: 'utf8' })
+  if (r.status !== 0) return null
+  try {
+    const u = JSON.parse(r.stdout) as { id?: unknown; login?: unknown; name?: unknown }
+    if (typeof u.id !== 'number' || !Number.isInteger(u.id) || u.id <= 0 || typeof u.login !== 'string' || !/^[A-Za-z0-9-]+$/.test(u.login)) return null
+    const name = typeof u.name === 'string' && u.name.trim() ? u.name.trim() : u.login
+    return { email: `${u.id}+${u.login}@users.noreply.github.com`, name }
+  } catch {
+    return null
+  }
+}
 
 export type Created = { coreVersion: string; dir: string; pending: string[] }
 
@@ -46,6 +69,11 @@ function steps(o: CreateOptions, log: (line: string) => void, progress: { stage:
   for (const cmd of ['pnpm', 'git', ...(o.repo ? ['gh'] : [])]) if (!has(cmd)) throw new CliError(`cal ${cmd} al PATH`)
   // `gh --version` no diu si hi ha sessió: sense aquesta comprovació, la creació fallaria al final, amb tot ja escrit.
   if (o.repo && spawnSync('gh', ['auth', 'status'], { stdio: 'ignore' }).status !== 0) throw Object.assign(new CliError('gh no té cap sessió activa (gh auth login): cal per a --repo; no s\'ha escrit res'), { exitCode: 1 })
+  // La identitat del commit inicial, abans d'escriure res: amb --repo, la `noreply` de la sessió de `gh` (GitHub rebutja
+  // el push d'un commit amb el correu privat del compte, GH007); sense, la que git té configurada (fora de cap repositori).
+  const gh = o.repo ? ghIdentity() : null
+  if (o.repo && !gh) throw Object.assign(new CliError('no s\'ha pogut llegir la identitat de la sessió de gh (gh api user): cal per al commit inicial amb --repo; no s\'ha escrit res'), { exitCode: 1 })
+  if (!o.repo && !gitIdentity(os.tmpdir())) throw Object.assign(new CliError('git no té cap identitat configurada (git config --global user.name "…" i user.email "…"; una identitat que només dona un includeIf per al directori nou, la comprovació no la veu: usa --repo o git config --global): cal per al commit inicial; no s\'ha escrit res'), { exitCode: 1 })
   if (existsSync(dir) && (!statSync(dir).isDirectory() || readdirSync(dir).length > 0)) throw new CliError(`${dir} existeix i no és buit`)
   const vars: Vars = { coreVersion: o.coreVersion, domain: o.domain, locale: o.locale, name: o.name, slug: o.slug }
   log(`create-subur-app: ${o.name} (${o.slug}, ${o.domain}, ${o.locale}) a ${dir}`)
@@ -53,6 +81,11 @@ function steps(o: CreateOptions, log: (line: string) => void, progress: { stage:
   progress.stage = 'local'
   mkdirSync(dir, { recursive: true })
   run('git', ['init', '-q', '-b', 'main'], dir)
+  // Amb --repo, la identitat queda a la configuració del clon: els commits següents de qui hi treballi també són `noreply`.
+  if (gh) for (const [key, value] of [['user.name', gh.name], ['user.email', gh.email]]) run('git', ['config', key, value], dir)
+  const identity = gh ? `${gh.name} <${gh.email}>` : gitIdentity(dir)
+  if (!identity) throw new Error('git no té cap identitat configurada per a aquest directori: cal per al commit inicial')
+  log(`commit inicial amb ${identity}`)
   // 2. El mínim per instal·lar el nucli (R2): package.json, .npmrc (hoisting), pnpm-workspace.yaml (allowBuilds) i, si cal, el tarball.
   let coreSpec = o.coreVersion
   if (o.coreTarball) {
@@ -89,10 +122,12 @@ function steps(o: CreateOptions, log: (line: string) => void, progress: { stage:
   run('pnpm', ['-s', 'exec', 'subur', 'sync'], dir)
   run('pnpm', ['-s', 'exec', 'subur', 'check'], dir)
   if (!o.noBuild) run('pnpm', ['build'], dir, { ...process.env, DATABASE_URL: 'postgres://build-only:x@127.0.0.1:1/build_only', NEXT_TELEMETRY_DISABLED: '1', SUBUR_SECRET: 'build-only' })
-  // 7. El primer commit (spec §4.1 pas 5): identitat del client si n'hi ha; si no, la del CI del nucli
-  const identity = spawnSync('git', ['config', 'user.email'], { cwd: dir, encoding: 'utf8' }).stdout.trim() ? [] : ['-c', 'user.name=create-subur-app', '-c', 'user.email=ci@subur.dev']
+  // 7. El primer commit (spec §4.1 pas 5), amb la identitat de la comprovació prèvia. Amb --repo, per l'entorn: les variables
+  // GIT_AUTHOR_*/GIT_COMMITTER_* guanyen a tota configuració (user.*, i també author.*/committer.*, que guanyarien a un
+  // `-c user.email`), també a les de l'entorn de qui la crida. Sense --repo, la de git, mai endevinada.
+  const commitEnv = gh ? { ...process.env, GIT_AUTHOR_EMAIL: gh.email, GIT_AUTHOR_NAME: gh.name, GIT_COMMITTER_EMAIL: gh.email, GIT_COMMITTER_NAME: gh.name } : process.env
   run('git', ['add', '-A'], dir)
-  run('git', [...identity, 'commit', '-q', '-m', `feat: web de ${o.name}, creada amb create-subur-app ${o.coreVersion}`], dir)
+  run('git', [...(gh ? [] : CONFIG_ONLY), 'commit', '-q', '-m', `feat: web de ${o.name}, creada amb create-subur-app ${o.coreVersion}`], dir, commitEnv)
   // 8. GitHub (spec §4.1 pas 6): el repositori privat, les variables ABANS del primer push, i el push
   if (o.repo) {
     run('gh', ['repo', 'create', o.repo, '--private'], dir)

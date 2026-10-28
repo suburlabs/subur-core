@@ -119,8 +119,10 @@ const sha512 = (file: string) => `sha512-${createHash('sha512').update(readFileS
 const integrity = sha512(path.join(vendorDir, tgz))
 ok(1, `vendor/${tgz} (${integrity.slice(0, 19)}…); CLI ${cliTgz}`)
 
-// 2. l'app, creada per la CLI: amb la branca de build en sec (sense --no-build), sense --repo ni --business.
-sh('node', [cliBin, app, '--slug', 'demo', '--domain', 'demo.example', '--locale', 'ca', '--name', NAME, '--core-tarball', path.join(vendorDir, tgz)])
+// 2. l'app, creada per la CLI: amb la branca de build en sec (sense --no-build), sense --repo ni --business. Sense --repo,
+// la CLI exigeix una identitat de git configurada (el runner no en té): la del CI, per l'entorn.
+const ciIdentity = { GIT_AUTHOR_EMAIL: 'ci@subur.dev', GIT_AUTHOR_NAME: 'acceptance', GIT_COMMITTER_EMAIL: 'ci@subur.dev', GIT_COMMITTER_NAME: 'acceptance' }
+sh('node', [cliBin, app, '--slug', 'demo', '--domain', 'demo.example', '--locale', 'ca', '--name', NAME, '--core-tarball', path.join(vendorDir, tgz)], { env: { ...process.env, ...ciIdentity } })
 const appReal = realpathSync(app)
 if (insideRepo(appReal)) fail(`l'app ha de ser fora del repositori: ${app}`)
 const git = (...args: string[]) => capture('git', ['-C', app, ...args], app)
