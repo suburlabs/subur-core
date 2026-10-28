@@ -10,6 +10,8 @@ Aquest repositori conté els dos paquets que es publiquen a npm i la web d'exemp
 
 El nucli es publica amb llicència MIT; vegeu `LICENSE`.
 
+Versió publicada: 0.1.0 — [`@suburlabs/core`](https://www.npmjs.com/package/@suburlabs/core) i [`create-subur-app`](https://www.npmjs.com/package/create-subur-app).
+
 ## Treballar-hi
 
 Cal Node 24 i `pnpm` 10. Des d'aquesta carpeta:
