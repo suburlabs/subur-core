@@ -1,6 +1,6 @@
 {
   "name": "create-subur-app",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Crea el repositori d'un client de Subur sobre @suburlabs/core",
   "license": "MIT",
   "type": "module",
