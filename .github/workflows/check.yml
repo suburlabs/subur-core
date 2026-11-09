@@ -71,7 +71,7 @@ jobs:
           DATABASE_URL: postgres://subur:subur@127.0.0.1:5432/subur
       # Les proves de contenidor de la imatge de còpies, un segon cop sobre la imatge publicada de la VERSION del nucli
       # (pla E4, fase 0): el que corre als servidors és aquesta, no la construïda al runner.
-      - name: Imatge de còpies publicada (per digest: el que corre als servidors)
+      - name: Imatge de còpies publicada per digest (la que corre als servidors)
         run: pnpm -C packages/core exec vitest run --config ./vitest.config.mts tests/int/backup.container.int.spec.ts tests/int/umamiPurge.container.int.spec.ts
         env:
           DATABASE_URL: postgres://subur:subur@127.0.0.1:5432/subur
