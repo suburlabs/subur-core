@@ -1624,6 +1624,8 @@ export interface SiteSettings {
     formRequired?: string | null;
     formSuccess?: string | null;
     heroFilmLoading?: string | null;
+    heroFilmPlay?: string | null;
+    heroFilmPlayTouch?: string | null;
     languageLabel?: string | null;
     menu?: string | null;
     momentAfter?: string | null;
@@ -1826,6 +1828,8 @@ export interface SiteSettingsSelect<T extends boolean = true> {
         formRequired?: T;
         formSuccess?: T;
         heroFilmLoading?: T;
+        heroFilmPlay?: T;
+        heroFilmPlayTouch?: T;
         languageLabel?: T;
         menu?: T;
         momentAfter?: T;

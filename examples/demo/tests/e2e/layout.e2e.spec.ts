@@ -252,7 +252,7 @@ test.describe('hero film', () => {
     await context.close()
   })
 
-  test('when playback is refused (low power mode), the stage keeps the stills until the first gesture', async ({
+  test('when playback is refused (low power mode), the play button shows until the first gesture', async ({
     browser,
   }) => {
     // Safari amb el mode de baix consum del Mac o de l'iPad
@@ -260,8 +260,9 @@ test.describe('hero film', () => {
     // amb NotAllowedError i un vídeo que mai s'ha reproduït no pinta cap
     // fotograma cercat — es veuria el `poster` congelat. Es simula
     // rebutjant `play()` fins al primer `pointerdown` (el gest que
-    // desbloqueja WebKit), i es comprova que l'escenari es queda amb les
-    // stills i passa a `playing` només després del gest.
+    // desbloqueja WebKit), i es comprova que l'escenari passa a `ready`
+    // (les stills a sota i el botó de reproduir a sobre) i a `playing` només
+    // després de picar el botó.
     const context = await browser.newContext({
       reducedMotion: 'no-preference',
       viewport: { height: 900, width: 1440 },
@@ -295,16 +296,21 @@ test.describe('hero film', () => {
     const stage = page.locator('[data-hero-stage]')
     const video = page.locator('[data-hero-film]')
     await expect(stage).toHaveAttribute('data-hero-state', 'loading', { timeout: 5_000 })
-    // El film arriba i es cerca, però `play()` es rebutja: stills, no un
-    // pòster congelat a opacitat 1.
-    await expect(stage).toHaveAttribute('data-hero-state', 'stills', { timeout: 30_000 })
+    // El film arriba i es cerca, però `play()` es rebutja: les stills, no un
+    // pòster congelat a opacitat 1, i el botó que demana el gest.
+    const play = page.locator('[data-hero-play]')
+    await expect(stage).toHaveAttribute('data-hero-state', 'ready', { timeout: 30_000 })
     await page.waitForTimeout(1_000)
-    await expect(stage).toHaveAttribute('data-hero-state', 'stills')
+    await expect(stage).toHaveAttribute('data-hero-state', 'ready')
     expect(Number(await video.evaluate((el) => getComputedStyle(el).opacity))).toBe(0)
+    await expect(play).toBeVisible()
 
-    // Primer gest: WebKit ja deixa reproduir, el film es revela.
-    await page.mouse.click(1400, 450)
+    // Les galetes tapen el botó en una primera visita; aquí, com qui torna
+    await page.addStyleTag({ content: '[data-testid="consent-banner-root"] { display: none !important; }' })
+    // Picar el botó: WebKit ja deixa reproduir, el film es revela i el botó se'n va.
+    await play.click()
     await expect(stage).toHaveAttribute('data-hero-state', 'playing', { timeout: 5_000 })
+    await expect(play).toBeHidden()
     await expect
       .poll(async () => Number(await video.evaluate((el) => getComputedStyle(el).opacity)))
       .toBe(1)
