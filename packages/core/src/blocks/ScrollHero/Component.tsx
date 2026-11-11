@@ -1,6 +1,8 @@
+import { Play } from 'lucide-react'
 import Image from 'next/image'
 
 import { CMSLink } from '../../components/Link/index.js'
+import { Button } from '../../components/ui/button.js'
 import { siteConfig } from 'subur-site-config'
 import { Plaque } from '../../ui/index.js'
 import type { ScrollHeroBlock } from '../../types/subur-types.js'
@@ -117,6 +119,17 @@ export function ScrollHero({
               </div>
             )
           })}
+
+          {/* Quan el navegador (Safari) demana un gest abans de reproduir el
+              film, l'escenari passa a `ready` i aquest botó el demana. Fer
+              scroll no és un gest; picar-lo, o picar qualsevol lloc, sí. El
+              text diu les dues coses: «clic» amb ratolí, «toqui» en una
+              pantalla tàctil (primitives.css tria quin es veu). */}
+          <Button className="hero-play" data-hero-play type="button">
+            <Play aria-hidden="true" fill="currentColor" />
+            <span className="hero-play__pointer">{settings.ui.heroFilmPlay}</span>
+            <span className="hero-play__touch">{settings.ui.heroFilmPlayTouch}</span>
+          </Button>
 
           <ol aria-hidden="true" className="hero-rail">
             {beats.map((beat, index) => (

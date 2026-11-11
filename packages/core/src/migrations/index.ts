@@ -9,6 +9,7 @@ import * as migration_20260928_005048_jobs from './20260928_005048_jobs.js';
 import * as migration_20261016_201855_plan_m_subscription_modules from './20261016_201855_plan_m_subscription_modules.js';
 import * as migration_20261018_120000_next_cache from './20261018_120000_next_cache.js';
 import * as migration_20261023_203917_footer_credit from './20261023_203917_footer_credit.js';
+import * as migration_20261111_105420_hero_film_play from './20261111_105420_hero_film_play.js';
 
 export const migrations = [
   {
@@ -64,6 +65,11 @@ export const migrations = [
   {
     up: migration_20261023_203917_footer_credit.up,
     down: migration_20261023_203917_footer_credit.down,
-    name: '20261023_203917_footer_credit'
+    name: '20261023_203917_footer_credit',
+  },
+  {
+    up: migration_20261111_105420_hero_film_play.up,
+    down: migration_20261111_105420_hero_film_play.down,
+    name: '20261111_105420_hero_film_play'
   },
 ];

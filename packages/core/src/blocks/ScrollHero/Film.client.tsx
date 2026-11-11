@@ -123,6 +123,7 @@ export function ScrollHeroFilm({ children, count, heroFilm }: { children: ReactN
       const section = root.current?.querySelector<HTMLElement>('[data-block="scrollHero"]')
       const stage = root.current?.querySelector<HTMLElement>('[data-hero-stage]')
       const video = root.current?.querySelector<HTMLVideoElement>('[data-hero-film]')
+      const play = root.current?.querySelector<HTMLButtonElement>('[data-hero-play]')
       if (!section || !stage || !video) return
 
       const beats = gsap.utils.toArray<HTMLElement>('[data-beat]', root.current)
@@ -497,13 +498,18 @@ export function ScrollHeroFilm({ children, count, heroFilm }: { children: ReactN
                 stage.dataset.heroState = 'playing'
                 section.setAttribute('aria-busy', 'false')
               })
-              .catch(() => {
+              .catch((error: unknown) => {
                 revealing = false
                 if (cancelled || revealed) return
-                showStills()
+                // Safari vol un gest abans: el botó de reproduir el demana
+                if (error instanceof DOMException && error.name === 'NotAllowedError') {
+                  stage.dataset.heroState = 'ready'
+                  section.setAttribute('aria-busy', 'false')
+                } else showStills()
               })
           })
           gestureEvents.forEach((name) => window.addEventListener(name, tryReveal, { passive: true }))
+          play?.addEventListener('click', tryReveal)
 
           const seekToProgress = () => {
             if (cancelled) return
@@ -637,6 +643,7 @@ export function ScrollHeroFilm({ children, count, heroFilm }: { children: ReactN
             document.removeEventListener('visibilitychange', resumePresentation)
             window.removeEventListener('pageshow', resumePresentation)
             gestureEvents.forEach((name) => window.removeEventListener(name, tryReveal))
+            play?.removeEventListener('click', tryReveal)
           }
         },
       )

@@ -57,6 +57,22 @@ export const uiDefaults = {
     label: { ca: 'Portada: carregant la pel·lícula', en: 'Hero: loading the film', es: 'Portada: cargando la película' },
     text: { ca: 'Carregant la pel·lícula', en: 'Loading the film', es: 'Cargando la película' },
   },
+  heroFilmPlay: {
+    label: {
+      ca: 'Portada: botó de la pel·lícula (ratolí)',
+      en: 'Hero: film button (mouse)',
+      es: 'Portada: botón de la película (ratón)',
+    },
+    text: { ca: "Faci clic i desplaci's", en: 'Click, then scroll', es: 'Haga clic y desplácese' },
+  },
+  heroFilmPlayTouch: {
+    label: {
+      ca: 'Portada: botó de la pel·lícula (pantalla tàctil)',
+      en: 'Hero: film button (touch screen)',
+      es: 'Portada: botón de la película (pantalla táctil)',
+    },
+    text: { ca: "Toqui i desplaci's", en: 'Tap, then scroll', es: 'Toque y desplácese' },
+  },
   languageLabel: {
     label: { ca: 'Selector d’idioma', en: 'Language selector', es: 'Selector de idioma' },
     text: { ca: 'Idioma', en: 'Language', es: 'Idioma' },

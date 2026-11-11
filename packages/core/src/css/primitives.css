@@ -403,6 +403,64 @@ html.dark [data-js] [data-hero-stage] .hero-film {
   transition: opacity 300ms var(--ease-shutter);
 }
 
+/* El film és a punt i el navegador (Safari) espera un gest: un botó opac a
+   la cantonada de baix de la imatge, sobre el carril, el demana. Com el
+   rètol, és opac i no llisca; només apareix amb un fos. */
+.hero-play {
+  display: none;
+}
+
+[data-js] [data-hero-stage][data-hero-state='ready'] .hero-play {
+  display: inline-flex;
+  grid-area: 1 / 1;
+  align-self: end;
+  justify-self: end;
+  z-index: 3;
+  margin: clamp(1rem, 4vw, 3rem);
+  margin-block-end: 1.25rem;
+  animation: hero-play-in 500ms var(--ease-shutter) both;
+}
+
+/* Al mòbil (els mateixos límits que compacten el carril) el rètol omple la
+   imatge i el botó el trepitjaria: ocupa la franja del carril, a l'abast del
+   polze, fins que el film arrenca i el carril torna. */
+@media (max-width: 640px), (max-height: 520px) {
+  [data-js] [data-hero-stage][data-hero-state='ready'] .hero-play {
+    grid-area: 2 / 1;
+    align-self: stretch;
+    justify-self: stretch;
+    z-index: 4;
+    height: auto;
+    margin: 0;
+    border-radius: 0;
+  }
+}
+
+/* «Faci clic» amb ratolí, «Toqui» en una pantalla tàctil: el que no es veu
+   també queda fora del nom del botó. */
+.hero-play__pointer,
+.hero-play__touch {
+  display: none;
+}
+
+@media (pointer: fine) {
+  .hero-play__pointer {
+    display: inline;
+  }
+}
+
+@media not (pointer: fine) {
+  .hero-play__touch {
+    display: inline;
+  }
+}
+
+@keyframes hero-play-in {
+  from {
+    opacity: 0;
+  }
+}
+
 .hero-rail__percent {
   min-width: 3.5ch;
   color: var(--primary);

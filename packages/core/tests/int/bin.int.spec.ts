@@ -78,7 +78,7 @@ describe('binari subur', { timeout: 60_000 }, () => {
   it('migrate --status i migrate sobre una base buida: sense onInit (C6, C12, C20)', async () => {
     const env = { ...process.env, DATABASE_URL: withDb(process.env.DATABASE_URL!, empty) }
     const before = subur(['migrate', '--status'], env)
-    expect(before).toMatch(/^pendents: 11$/m)
+    expect(before).toMatch(/^pendents: 12$/m)
     expect(before).not.toMatch(/WARN|INFO/)            // els registres del motor van a stderr (D14; sonda S8)
     subur(['migrate'], env)
     expect(subur(['migrate', '--status'], env)).toMatch(/^cap pendent$/m)
@@ -107,7 +107,7 @@ describe('binari subur', { timeout: 60_000 }, () => {
       expect(stderr).toMatch(/subur migrate \[--status\]/)
     }
     expect(await sql(env.DATABASE_URL!, "select to_regclass('public.payload_migrations') as t")).toEqual([{ t: null }])
-    expect(subur(['migrate', '--status'], env)).toMatch(/^pendents: 11$/m)
+    expect(subur(['migrate', '--status'], env)).toMatch(/^pendents: 12$/m)
   })
   it('migrate --status sobre una base que no existeix surt 1 i no la crea (ronda de revisió 1)', async () => {
     const absent = `${empty}_absent`
